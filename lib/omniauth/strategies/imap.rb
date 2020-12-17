@@ -1,13 +1,17 @@
+
 module OmniAuth
   module Strategies
     class IMAP
       include OmniAuth::Strategy
       
-      require Net::IMAP
+      require "net/imap"
 
       option :name, 'imap'
       option :fields, [:username]
+      option :uid_field, :username
       option :email_domain, nil
+      option :port, 143
+      option :host, "mail.example.com"
 
       def request_phase
         OmniAuth::Form.build(
@@ -20,7 +24,7 @@ module OmniAuth
       end
 
       def callback_phase
-        imap = Net::IMAP.new(options[:host], options: {options[:port]})
+        imap = Net::IMAP.new(options[:host], options: {port: options[:port]})
         imap.starttls()
         imap.authenticate("PLAIN", username, request["password"])
         super
@@ -28,13 +32,13 @@ module OmniAuth
         return fail!(:invalid_credentials)
       end
 
-      username do
+      uid do
         request['username']
       end
       
       info do
-        email = options[:email_domain].nil? username : "#{username}@#{options[:email_domain]}"
-        { nickname: username, name: username, email: email }
+        email = options[:email_domain].nil? ? uid : "#{uid}@#{options[:email_domain]}"
+        { nickname: uid, name: uid, email: email }
       end
     end
   end
