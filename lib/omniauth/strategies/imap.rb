@@ -1,7 +1,6 @@
-
 module OmniAuth
   module Strategies
-    class IMAP
+    class Imap
       include OmniAuth::Strategy
       
       require "net/imap"
@@ -20,20 +19,25 @@ module OmniAuth
         ) do |field|
           field.text_field 'Username', 'username'
           field.password_field 'Password', 'password'
+          t = session[:_csrf_token]
+          t_html = "<input type=\"hidden\" name=\"authenticity_token\" value=\"#{t}\"/>"
+	  field.html t_html
         end.to_response
       end
 
       def callback_phase
         imap = Net::IMAP.new(options[:host], options: {port: options[:port]})
         imap.starttls()
-        imap.authenticate("PLAIN", username, request["password"])
+        imap.authenticate("PLAIN", uid, request[:password])
         super
-      rescue
-        return fail!(:invalid_credentials)
+      rescue SocketError
+	return fail!(:server_communication_error)
+      rescue Net::IMAP::NoResponseError => e
+        return fail!(e.to_s)
       end
 
       uid do
-        request['username']
+        request[:username]
       end
       
       info do
@@ -44,4 +48,3 @@ module OmniAuth
   end
 end
 
-OmniAuth.config.add_camelization 'imap', 'IMAP'
